@@ -1,0 +1,31 @@
+<form action="processamento.php" method="post" enctype="multipart/form-data">
+    <input type="file" name="imagem" accept="image/*" required>
+    <label for="chad">Chad</label>
+    <input type="radio" id="chad" name="personagem" value="chad" required>
+    <label for="wojak">Wojak</label>
+    <input type="radio" id="wojak" name="personagem" value="wojak" required>
+    <button type="submit">Transformar</button>
+</form>
+<p>O custo da transformação é de R$1,00. Faça o pagamento após o upload da imagem.</p>
+
+
+
+
+<?php
+// Verificar se o pagamento foi feito com sucesso
+// Este é um exemplo simplificado usando a API do PayPal
+// Você precisará substituir isso com a lógica real do seu sistema de pagamento
+
+// Verificar se o parâmetro 'payment_status' está definido na resposta do PayPal
+if(isset($_GET['payment_status']) && $_GET['payment_status'] == 'Completed') {
+    // O pagamento foi concluído com sucesso, permitir o processamento da imagem
+    // Redirecionar para a página de processamento com a imagem e outras informações necessárias
+    header('Location: processamento.php?imagem=' . $_GET['imagem'] . '&personagem=' . $_GET['personagem']);
+    exit;
+} else {
+    // O pagamento não foi concluído com sucesso, exibir mensagem de erro e redirecionar de volta para a página de upload
+    echo "Erro no pagamento. Por favor, tente novamente.";
+    header('Refresh: 5; URL=upload.php'); // Redirecionar de volta para a página de upload após 5 segundos
+    exit;
+}
+?>

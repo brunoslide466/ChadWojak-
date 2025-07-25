@@ -1,31 +1,187 @@
-<form action="processamento.php" method="post" enctype="multipart/form-data">
-    <input type="file" name="imagem" accept="image/*" required>
-    <label for="chad">Chad</label>
-    <input type="radio" id="chad" name="personagem" value="chad" required>
-    <label for="wojak">Wojak</label>
-    <input type="radio" id="wojak" name="personagem" value="wojak" required>
-    <button type="submit">Transformar</button>
-</form>
-<p>O custo da transformação é de R$1,00. Faça o pagamento após o upload da imagem.</p>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DólarScope</title>
+  <style>
+    body {
+      background-color: #0e0e0e;
+      color: #f4f4f4;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+    }
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      margin-top: 1.2rem;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 0.6rem;
+      margin-top: 0.3rem;
+      background: #1a1a1a;
+      color: #f4f4f4;
+      border: 1px solid #333;
+      border-radius: 8px;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.7rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      background: #00b894;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #019174;
+    }
+    .resultado, .registro {
+      background: #1a1a1a;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-top: 1rem;
+      box-shadow: 0 0 8px rgba(0,0,0,0.3);
+    }
+    .muted {
+      color: #999;
+      font-size: 0.9rem;
+    }
+    .registro button {
+      background: none;
+      border: none;
+      color: #f66;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .registro-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>DólarScope</h1>
+  <p class="muted" id="cotacaoDolar">Cotação atual do dólar: carregando...</p>
 
+  <label for="reais">Quanto investiu (R$):</label>
+  <input type="number" id="reais" step="0.01" />
 
+  <label for="cotacaoCompra">Cotação na compra (R$):</label>
+  <input type="number" id="cotacaoCompra" step="0.01" />
 
+  <label for="cotacaoAtual">Cotação atual (R$):</label>
+  <input type="number" id="cotacaoAtual" step="0.01" />
 
-<?php
-// Verificar se o pagamento foi feito com sucesso
-// Este é um exemplo simplificado usando a API do PayPal
-// Você precisará substituir isso com a lógica real do seu sistema de pagamento
+  <button onclick="calcular()">Calcular</button>
+  <button onclick="salvar()">Salvar</button>
 
-// Verificar se o parâmetro 'payment_status' está definido na resposta do PayPal
-if(isset($_GET['payment_status']) && $_GET['payment_status'] == 'Completed') {
-    // O pagamento foi concluído com sucesso, permitir o processamento da imagem
-    // Redirecionar para a página de processamento com a imagem e outras informações necessárias
-    header('Location: processamento.php?imagem=' . $_GET['imagem'] . '&personagem=' . $_GET['personagem']);
-    exit;
-} else {
-    // O pagamento não foi concluído com sucesso, exibir mensagem de erro e redirecionar de volta para a página de upload
-    echo "Erro no pagamento. Por favor, tente novamente.";
-    header('Refresh: 5; URL=upload.php'); // Redirecionar de volta para a página de upload após 5 segundos
-    exit;
-}
-?>
+  <div id="resultado" class="resultado" style="display:none;"></div>
+
+  <div class="investimentos">
+    <h2>Meus Investimentos</h2>
+    <div id="historico"></div>
+  </div>
+
+  <script>
+    const resultadoDiv = document.getElementById('resultado');
+    const historicoDiv = document.getElementById('historico');
+    const cotacaoEl = document.getElementById('cotacaoDolar');
+    let ultimaSimulacao = null;
+
+    const formatBRL = v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+    const formatUSD = v => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
+
+    async function buscarCotacaoAtual() {
+      try {
+        const res = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL');
+        const data = await res.json();
+        const valor = parseFloat(data.USDBRL.bid).toFixed(2);
+        cotacaoEl.textContent = `Cotação atual do dólar: R$ ${valor}`;
+        document.getElementById('cotacaoAtual').value = valor;
+      } catch {
+        cotacaoEl.textContent = 'Cotação atual do dólar: erro ao carregar';
+      }
+    }
+
+    function calcular() {
+      const reais = parseFloat(document.getElementById('reais').value);
+      const compra = parseFloat(document.getElementById('cotacaoCompra').value);
+      const atual = parseFloat(document.getElementById('cotacaoAtual').value);
+
+      if (isNaN(reais) || isNaN(compra) || isNaN(atual)) return;
+
+      const dolares = reais / compra;
+      const valAtual = dolares * atual;
+      const lucro = valAtual - reais;
+
+      ultimaSimulacao = {
+        id: Date.now(),
+        data: new Date().toLocaleString(),
+        reais,
+        compra,
+        atual,
+        dolares: dolares.toFixed(2),
+        valorAtual: valAtual.toFixed(2),
+        lucro: lucro.toFixed(2)
+      };
+
+      resultadoDiv.style.display = 'block';
+      resultadoDiv.innerHTML = `
+        <p><strong>Dólares comprados:</strong> ${formatUSD(dolares)}</p>
+        <p><strong>Valor atual:</strong> ${formatBRL(valAtual)}</p>
+        <p><strong>${lucro >= 0 ? "Lucro" : "Prejuízo"}:</strong> ${formatBRL(lucro)}</p>
+        <p class="muted">Cotação: ${compra} → ${atual}</p>
+      `;
+    }
+
+    function salvar() {
+      if (!ultimaSimulacao) return alert("Calcule antes de salvar!");
+      const historico = JSON.parse(localStorage.getItem('investimentos') || '[]');
+      historico.unshift(ultimaSimulacao);
+      localStorage.setItem('investimentos', JSON.stringify(historico));
+      renderHistorico();
+      alert("Investimento salvo!");
+    }
+
+    function deletar(id) {
+      const historico = JSON.parse(localStorage.getItem('investimentos') || '[]');
+      const novo = historico.filter(item => item.id !== id);
+      localStorage.setItem('investimentos', JSON.stringify(novo));
+      renderHistorico();
+    }
+
+    function renderHistorico() {
+      const historico = JSON.parse(localStorage.getItem('investimentos') || '[]');
+      if (historico.length === 0) {
+        historicoDiv.innerHTML = "<p class='muted'>Nenhum investimento salvo ainda.</p>";
+        return;
+      }
+      historicoDiv.innerHTML = historico.map(item => `
+        <div class="registro">
+          <div class="registro-header">
+            <p><strong>Data:</strong> ${item.data}</p>
+            <button onclick="deletar(${item.id})" title="Excluir">🗑️</button>
+          </div>
+          <p><strong>Investido:</strong> ${formatBRL(item.reais)}</p>
+          <p><strong>Dólares:</strong> ${formatUSD(item.dolares)}</p>
+          <p><strong>Lucro:</strong> ${formatBRL(item.lucro)}</p>
+          <p class="muted">Cotação: ${item.compra} → ${item.atual}</p>
+        </div>
+      `).join('');
+    }
+
+    buscarCotacaoAtual();
+    renderHistorico();
+  </script>
+</body>
+</html> 
